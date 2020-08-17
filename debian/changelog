@@ -1,17 +1,147 @@
-ukui-settings-daemon (3.0.0-1) unstable; urgency=medium
+ukui-settings-daemon (1.2.1-3kord1.21) v100; urgency=medium
 
-  * New upstream release.
+  * rebuild.
 
- -- handsome_feng <jianfengli@ubuntukylin.com>  Mon, 10 Aug 2020 07:24:01 +0000
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Wed, 12 Aug 2020 17:27:43 +0800
 
-ukui-settings-daemon (1.2.1-1) unstable; urgency=medium
+ukui-settings-daemon (1.2.1-3kord1.20) v100; urgency=medium
+
+  * Repair system shortcut keys are not available.
+    - patches/Fix-system-shortcut-keys-are-not-available.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Wed, 12 Aug 2020 16:43:11 +0800
+
+ukui-settings-daemon (1.2.1-3kord1.19) v100; urgency=medium
+
+  * Repair custom binding shortcut keys can not run.
+    - patches/Fix-custom-shortcut-keys-error.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Wed, 12 Aug 2020 09:59:57 +0800
+
+ukui-settings-daemon (1.2.1-3kord1.18) v100; urgency=medium
+
+  * enable mouse-location-pointer cutshort key when caps on.
+
+ -- liutong <liutong@kylinos.cn>  Sun, 09 Aug 2020 21:29:06 -0400
+
+ukui-settings-daemon (1.2.1-3kord1.17) v100; urgency=medium
+
+  * Add setting ScrollLock light state.
+  * Fix the flickering problem of numlock and capslock lights.
+    - patches/Add-setting-ScrollLock-light-state.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Sun, 09 Aug 2020 17:40:25 +0800
+
+ukui-settings-daemon (1.2.1-3kord1.16) v100; urgency=medium
+
+  * rebuild.
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Thu, 06 Aug 2020 16:24:25 +0800
+
+ukui-settings-daemon (1.2.1-3kord1.15) v100; urgency=medium
+
+  * Shortcut key Sinicization.
+  * Fix the crash caused by touch screen function.
+    - patches/Shortcut-key-Sinicization.patch
+    - patches/Fix-ukui-settings-daemon-crash.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Tue, 04 Aug 2020 16:18:31 +0800
+
+ukui-settings-daemon (1.2.1-3kord1.14) v100; urgency=medium
+
+  * fix background issue 
+
+ -- liutong <liutong@kylinos.cn>  Sat, 01 Aug 2020 10:21:55 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.13) v100; urgency=medium
+
+  * Fix the problem of the touch screen rotating the screen pointer position.
+    - patches/Fix-the-problem-of-the-touch-screen-rotating-the-screen-pointer-position.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Fri, 31 Jul 2020 14:17:20 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.12) v100; urgency=medium
+
+  * fix mouse location pointer shortcut.
+
+ -- liutong <liutong@kylinos.cn>  Tue, 28 Jul 2020 16:31:28 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.11) v100; urgency=medium
+
+  * Add 4k HD screen zoom mechanism.
+    - patches/Improve-the-4K-HD-screen-zoom-mechanism.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Wed, 22 Jul 2020 16:57:01 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.10) v100; urgency=medium
+
+  * Modify mouse theme to DMZ-Black.
+    - patches/Modify-Mouse-Theme-To-DMZ-Black.patch
+
+ -- liutong <liutong@kylinos.cn>  Mon, 20 Jul 2020 11:52:40 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.9) v100; urgency=medium
+
+  * Add 4K screen to switch popups, set zoom.
+    - patches/0002-Add-4K-screen-to-switch-popups.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Mon, 06 Jul 2020 20:57:29 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.8) v100; urgency=medium
+
+  * Add DPI zoom to file.
+    - patches/0001-Add-DPI-zoom-to-file.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Mon, 29 Jun 2020 10:22:51 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.7) v100; urgency=medium
+
+  * Fix mouse visibility issues
+
+ -- yanhuanzhang <yanhuanzhang@kylinos.cn>  Sun, 28 Jun 2020 10:11:11 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.6) v100; urgency=medium
+
+  * Change gnome-screenshot to mate-screenshot
+    - patches/change-gnome-screenshot-to-mate-screenshot.patch
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Fri, 12 Jun 2020 11:37:44 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.5) v100; urgency=medium
+
+  * Add dependent gnome-screenshot,fix screenshots.
+
+ -- shangxiaoyang <shangxiaoyang@kylinos.cn>  Thu, 11 Jun 2020 11:32:09 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.4) v100; urgency=medium
+
+  * Fix conflict with mate-settings-daemon
+    - modify mate -> ukui in schema.xrandr (gtk, other)
+
+ -- liutong <liutong@kylinos.cn>  Fri, 22 May 2020 12:00:00 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.3) v100; urgency=medium
+
+  * Fix crash on v10
+    - modify code use 1604 api(gtk, other)
+
+ -- liutong <liutong@kylinos.cn>  Fri, 08 May 2020 12:00:00 +0800
+
+ukui-settings-daemon (1.2.1-2kylin1.2) v100; urgency=medium
+
+  * Sync from v10 mate-settings-daemon
+    - Sync patch
+
+ -- liutong <liutong@kylinos.cn>  Fri, 08 May 2020 12:00:00 +0800
+
+ukui-settings-daemon (1.2.1-1) v100; urgency=medium
 
   * New upstream bugfix release sync from v10 mate-settings-daemon
     - Fix the wrong command when do action of shutdown and logout.
     - Fix the numlock issue.
     - Fix that the settings of cursor theme didn't work.
 
- -- handsome_feng <jianfengli@ubuntukylin.com>  Thu, 26 Mar 2020 12:00:00 +0800
+ -- liutong <liutong@kylinos.cn>  Thu, 07 May 2020 12:00:00 +0800
 
 ukui-settings-daemon (1.2.0-1) unstable; urgency=medium
 

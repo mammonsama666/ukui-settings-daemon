@@ -1,0 +1,45 @@
+Index: ukui-settings-daemon-1.2.1/plugins/common/usd-keygrab.c
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/plugins/common/usd-keygrab.c	2020-05-09 14:41:43.000000000 +0800
++++ ukui-settings-daemon-1.2.1/plugins/common/usd-keygrab.c	2020-08-12 16:41:05.343830190 +0800
+@@ -64,6 +64,15 @@
+ 
+                 usd_ignored_mods |= dynmods;
+                 usd_used_mods &= ~dynmods;
++                
++                /* ScrollLock can be assigned to varying keys so we need to
++                 * resolve and ignore it specially */
++                dynmods = 0;
++                egg_keymap_resolve_virtual_modifiers (gdk_keymap_get_default (),
++                                                      EGG_VIRTUAL_SCROLL_LOCK_MASK,
++                                                      &dynmods);
++                usd_ignored_mods |= dynmods;
++                usd_used_mods &= ~dynmods;
+ 	}
+ }
+ 
+Index: ukui-settings-daemon-1.2.1/plugins/keyboard/usd-keyboard-manager.c
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/plugins/keyboard/usd-keyboard-manager.c	2020-08-09 17:32:51.000000000 +0800
++++ ukui-settings-daemon-1.2.1/plugins/keyboard/usd-keyboard-manager.c	2020-08-12 16:43:09.346075318 +0800
+@@ -470,8 +470,10 @@
+ static void 
+ scroll_lock_install()
+ {
+-
+-	GdkKeymapKey *keys;
++        /* Add Scroll_Lock key monitoring*/
++        system("xmodmap -e 'add mod3 = Scroll_Lock'");
++#if 0
++        GdkKeymapKey *keys;
+         GdkDisplay *display;
+         int n_keys;
+         display = gdk_display_get_default ();
+@@ -495,6 +497,7 @@
+                             GrabModeSync);
+ 	gdk_window_add_filter (gdk_screen_get_root_window (screen),
+                                      scroll_event_filter,  screen);
++#endif
+ }
+ 
+ static gboolean

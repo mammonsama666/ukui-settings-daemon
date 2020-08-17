@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+#include "syslog.h"
 
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -276,6 +277,7 @@ update_kbd_cb (GSettings           *settings,
         g_return_if_fail (settings_key != NULL);
 
         gdk_error_trap_push ();
+
         /* Find the key that was modified */
         for (i = 0; i < HANDLED_KEYS; i++) {
                 if (g_strcmp0 (settings_key, keys[i].settings_key) == 0) {
@@ -332,6 +334,7 @@ static void init_kbd(UsdMediaKeysManager* manager)
 	ukui_settings_profile_start(NULL);
 
 	gdk_error_trap_push();
+
 	for (i = 0; i < HANDLED_KEYS; i++)
 	{
 		char* tmp;
@@ -412,26 +415,15 @@ dialog_show (UsdMediaKeysManager *manager)
         int            screen_h;
         int            x;
         int            y;
-        GdkDisplay *display;
-        GdkDeviceManager *device_manager;
-        GdkDevice *pointer;
         int            pointer_x;
         int            pointer_y;
         GtkRequisition win_req;
         GdkScreen     *pointer_screen;
         GdkRectangle   geometry;
         int            monitor;
-        int ukui_panel_position;
-
-        /*get ukui_panel position*/
-        ukui_panel_position = gDbus_proxy_call_for_panel_posotion(manager);
 
         gtk_window_set_screen (GTK_WINDOW (manager->priv->dialog),
                                manager->priv->current_screen);
-
-        /* Return if OSD notifications are disabled */
-        if (!g_settings_get_boolean (manager->priv->settings, "enable-osd"))
-                return;
 
         /*
          * get the window size
@@ -439,7 +431,7 @@ dialog_show (UsdMediaKeysManager *manager)
          * know its true size, yet, so we need to jump through hoops
          */
         gtk_window_get_default_size (GTK_WINDOW (manager->priv->dialog), &orig_w, &orig_h);
-        gtk_widget_get_preferred_size (manager->priv->dialog, NULL, &win_req);
+        gtk_widget_size_request (manager->priv->dialog, &win_req);
 
         if (win_req.width > orig_w) {
                 orig_w = win_req.width;
@@ -447,6 +439,7 @@ dialog_show (UsdMediaKeysManager *manager)
         if (win_req.height > orig_h) {
                 orig_h = win_req.height;
         }
+        /*
         orig_w = 64;
         orig_h = 300;
         gtk_window_set_default_size(GTK_WINDOW (manager->priv->dialog), orig_w ,orig_h);
@@ -454,12 +447,13 @@ dialog_show (UsdMediaKeysManager *manager)
         display = gdk_screen_get_display (manager->priv->current_screen);
         device_manager = gdk_display_get_device_manager (display);
         pointer = gdk_device_manager_get_client_pointer (device_manager);
-
-        gdk_device_get_position (pointer,
+        */
+        pointer_screen = NULL;
+        gdk_display_get_pointer (gdk_screen_get_display (manager->priv->current_screen),
                                  &pointer_screen,
                                  &pointer_x,
-                                 &pointer_y);
-
+                                 &pointer_y,
+                                 NULL);
         if (pointer_screen != manager->priv->current_screen) {
                 /* The pointer isn't on the current screen, so just
                  * assume the default monitor
@@ -477,7 +471,7 @@ dialog_show (UsdMediaKeysManager *manager)
 
         screen_w = geometry.width;
         screen_h = geometry.height;
-
+        /*
 	if(ukui_panel_position == 1){
                 x = (screen_w * 0.01);
                 y = ((screen_h - 300) - screen_h * 0.04);
@@ -488,23 +482,15 @@ dialog_show (UsdMediaKeysManager *manager)
                 x = (screen_w * 0.01);
                 y = (screen_h * 0.04);
         }
+        */
+        x = ((screen_w - orig_w) / 2) + geometry.x;
+        y = geometry.y + (screen_h / 2) + (screen_h / 2 - orig_h) / 2;
 
         gtk_window_move (GTK_WINDOW (manager->priv->dialog), x, y);
-
-        GtkStyleContext * context = gtk_widget_get_style_context (manager->priv->dialog);
-        gtk_style_context_save (context);
-        GtkCssProvider *provider = gtk_css_provider_new ();
-        gtk_css_provider_load_from_data(provider, ".volume-box { border-radius:6px; background:rgba(19,20,20,0.9);}", -1, NULL);
-        gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-        gtk_style_context_add_class (context, "volume-box");
-        g_object_unref (provider);
-        //gtk_render_background (context, cr, 20, 40, orig_w, _orig_h);
-        //gtk_style_context_restore (context);
 
         gtk_widget_show (manager->priv->dialog);
 
         gdk_display_sync (gdk_screen_get_display (manager->priv->current_screen));
-        //gtk_style_context_restore (context);
 }
 
 static void
@@ -689,8 +675,8 @@ do_sound_action (UsdMediaKeysManager *manager, int type)
         gboolean muted_last;
         gboolean sound_changed = FALSE;
         guint    volume;
-        // guint    volume_min, volume_max;
-		guint    volume_min, volume_max, maxlessmin;
+        // guint volume_min, volume_max;
+        guint    volume_min, volume_max, maxlessmin;
         guint    volume_step;
         guint    volume_last;
 
@@ -714,7 +700,7 @@ do_sound_action (UsdMediaKeysManager *manager, int type)
                 mate_mixer_stream_control_get_volume (manager->priv->control);
         muted = muted_last =
                 mate_mixer_stream_control_get_mute (manager->priv->control);
-
+        /*
         //获取底层的声音将其转换为界面的声音，再做递增/减，递增递减之后再将其显示到界面上，最后再转换写入到底层
         if(volume <= volume_min + maxlessmin / 100 * 60.0)
             volume = volume_min + (volume - volume_min) / 3.0;
@@ -722,7 +708,7 @@ do_sound_action (UsdMediaKeysManager *manager, int type)
             volume = volume_min + maxlessmin / 100.0 * 40.0 +((volume - volume_min) - maxlessmin / 100.0 * 80.0) * 3.0;
         else
             volume = volume - maxlessmin / 100.0 * 40.0;
-
+        */
         switch (type) {
         case MUTE_KEY:
                 muted = !muted;
@@ -1181,6 +1167,7 @@ acme_filter_events (GdkXEvent           *xevent,
         }
         /*if (xev->type == KeyRelease &&xev->xkey.keycode == 133) {
 		    system("ukui-menu");
+		    syslog(LOG_ERR,"ukui-menu");
 		}
         */
         for (i = 0; i < HANDLED_KEYS; i++) {
@@ -1327,8 +1314,7 @@ usd_media_keys_manager_stop (UsdMediaKeysManager *manager)
 
         if (need_flush)
                 gdk_flush ();
-
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop ();
 
         g_slist_free (priv->screens);
         priv->screens = NULL;

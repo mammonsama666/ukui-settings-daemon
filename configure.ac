@@ -48,6 +48,13 @@ AS_AC_EXPAND(LIBEXECDIR, "$libexecdir")
 USD_INTLTOOL_PLUGIN_RULE='%.ukui-settings-plugin:   %.ukui-settings-plugin.in   $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< [$]@'
 AC_SUBST([USD_INTLTOOL_PLUGIN_RULE])
 
+
+# GLib min/max required versions
+AC_DEFINE([GLIB_VERSION_MAX_ALLOWED], [GLIB_VERSION_2_36],
+	[Warn on use of APIs added after GLib 2.36])
+AC_DEFINE([GLIB_VERSION_MIN_REQUIRED], [GLIB_VERSION_2_36],
+	[Warn on use of APIs deprecated before GLib 2.36])
+
 dnl Unconditionally use this dir to avoid a circular dep with ukcc
 UKUI_KEYBINDINGS_KEYSDIR="${datadir}/ukui-control-center/keybindings"
 AC_SUBST(UKUI_KEYBINDINGS_KEYSDIR)
@@ -59,7 +66,7 @@ dnl ---------------------------------------------------------------------------
 DBUS_GLIB_REQUIRED_VERSION=0.74
 GLIB_REQUIRED_VERSION=2.36.0
 GIO_REQUIRED_VERSION=2.26.0
-GTK_REQUIRED_VERSION=3.0.0
+# GTK_REQUIRED_VERSION=3.0.0
 MATE_DESKTOP_REQUIRED_VERSION=1.9.4
 LIBMATEKBD_REQUIRED_VERSION=1.7.0
 LIBNOTIFY_REQUIRED_VERSION=0.7.0
@@ -67,9 +74,30 @@ LIBMATEMIXER_REQUIRED_VERSION=1.9.0
 
 EXTRA_COMPILE_WARNINGS(yes)
 
+AC_MSG_CHECKING([which gtk+ version to compile against])
+AC_ARG_WITH([gtk],
+  [AS_HELP_STRING([--with-gtk=2.0|3.0],[which gtk+ version to compile against (default: 2.0)])],
+  [case "$with_gtk" in
+     2.0|3.0) ;;
+     *) AC_MSG_ERROR([invalid gtk version specified]) ;;
+   esac],
+  [with_gtk=2.0])
+AC_MSG_RESULT([$with_gtk])
+
+case "$with_gtk" in
+  2.0) GTK_API_VERSION=2.0
+       GTK_REQUIRED_VERSION=2.24.0
+       LIBCANBERRA_PC=libcanberra-gtk
+       ;;
+  3.0) GTK_API_VERSION=3.0
+       GTK_REQUIRED_VERSION=3.0.0
+       LIBCANBERRA_PC=libcanberra-gtk3
+       ;;
+esac
+
 PKG_CHECK_MODULES(SETTINGS_DAEMON,
 	glib-2.0 >= $GLIB_REQUIRED_VERSION
-	gtk+-3.0 >= $GTK_REQUIRED_VERSION
+	gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION
 	gio-2.0 >= $GIO_REQUIRED_VERSION
 	gmodule-2.0
 	gthread-2.0
@@ -77,7 +105,7 @@ PKG_CHECK_MODULES(SETTINGS_DAEMON,
 )
 
 PKG_CHECK_MODULES(SETTINGS_PLUGIN,
-	gtk+-3.0 >= $GTK_REQUIRED_VERSION
+	gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION
 	gio-2.0 >= $GIO_REQUIRED_VERSION
 	dbus-glib-1 >= $DBUS_GLIB_REQUIRED_VERSION
 )
@@ -90,7 +118,14 @@ case $host_os in
 esac
 AC_SUBST([USD_PLUGIN_LDFLAGS])
 
-PKG_CHECK_MODULES(DCONF, dconf >= 0.13.4)
+PKG_CHECK_MODULES([DCONF], [dconf >= 0.13.4],
+   [AC_DEFINE([HAVE_DCONF_0_13], [1], [Use DCONF >= 0.13.4])],
+   [PKG_CHECK_MODULES([DCONF], [dconf >= 0.10.0],
+       [AC_DEFINE([HAVE_DCONF_0_10], [1], [Use DCONF 0.10.0])
+    ])
+])
+AC_SUBST(DCONF_CFLAGS)
+AC_SUBST(DCONF_LIBS)
 
 AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
 
@@ -211,7 +246,7 @@ AC_CHECK_X_LIB(Xxf86misc, XF86MiscQueryExtension, [
 AC_SUBST(XF86MISC_LIBS)
 AC_CHECK_X_HEADERS([X11/extensions/XKB.h])
 
-PKG_CHECK_MODULES(LIBMATEKBDUI, [libmatekbdui >= $LIBMATEKBD_REQUIRED_VERSION libmatekbd >= $LIBMATEKBD_REQUIRED_VERSION libxklavier >= 5.2])
+PKG_CHECK_MODULES(LIBMATEKBDUI, [libmatekbdui >= $LIBMATEKBD_REQUIRED_VERSION libmatekbd >= $LIBMATEKBD_REQUIRED_VERSION libxklavier >= 5.0])
 AC_SUBST(LIBMATEKBDUI_CFLAGS)
 AC_SUBST(LIBMATEKBDUI_LIBS)
 
@@ -247,8 +282,8 @@ AC_ARG_WITH(libcanberra,
     with_libcanberra=$withval, with_libcanberra=auto)
 
 if test "x$with_libcanberra" != "xno"; then
-    PKG_CHECK_MODULES(LIBCANBERRA, libcanberra-gtk3,
-              [AC_DEFINE(HAVE_LIBCANBERRA, 1, [Define if libcanberra-gtk3 is available])
+    PKG_CHECK_MODULES(LIBCANBERRA, $LIBCANBERRA_PC,
+              [AC_DEFINE(HAVE_LIBCANBERRA, 1, [Define if $LIBCANBERRA_PC is available])
               have_libcanberra=yes], have_libcanberra=no)
     if test "x$have_libcanberra" = xno -a "x$with_libcanberra" = xyes; then
         AC_MSG_ERROR([libcanberra support requested but library not found])
@@ -519,6 +554,7 @@ echo "
     dbus-1 system.d dir:      ${DBUS_SYS_DIR}
     PolicyKit support:        ${HAVE_POLKIT}
 
+    Gtk+ version:             ${GTK_API_VERSION}
     PulseAudio support:       ${have_pulse}
     Libnotify support:        ${have_libnotify}
     Libcanberra support:      ${have_libcanberra}

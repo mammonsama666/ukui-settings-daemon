@@ -150,7 +150,7 @@ send_selection_notify (UsdClipboardManager *manager,
                     (XEvent *)&notify);
         XSync (manager->priv->display, False);
 
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop ();
 }
 
 static void
@@ -177,7 +177,7 @@ finish_selection_request (UsdClipboardManager *manager,
                     False, NoEventMask, (XEvent *) &notify);
         XSync (manager->priv->display, False);
 
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static int
@@ -553,7 +553,7 @@ convert_clipboard_target (IncrConversion      *rdata,
 
                         XSync (manager->priv->display, False);
 
-                        gdk_error_trap_pop_ignored ();
+                        gdk_error_trap_pop();
                 }
         }
 }

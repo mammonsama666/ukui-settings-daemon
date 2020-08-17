@@ -19,6 +19,6 @@
 
 #include <gdk/gdk.h>
 
-void usd_locate_pointer (GdkDisplay *display);
+void usd_locate_pointer (GdkScreen* display);
 
 #endif

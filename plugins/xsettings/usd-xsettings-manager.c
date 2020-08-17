@@ -44,6 +44,8 @@
 #include "xsettings-manager.h"
 #include "fontconfig-monitor.h"
 
+#include "syslog.h"
+
 #define UKUI_XSETTINGS_MANAGER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), UKUI_TYPE_XSETTINGS_MANAGER, UkuiXSettingsManagerPrivate))
 
 #define MOUSE_SCHEMA          "org.ukui.peripherals-mouse"
@@ -60,8 +62,8 @@
 #define FONT_DPI_KEY          "dpi"
 
 #define XSETTINGS_PLUGIN_SCHEMA "org.ukui.SettingsDaemon.plugins.xsettings"
-#define XSETTINGS_SCALING_KEY   "scaling-factor"
 #define XSETTINGS_OVERRIDE_KEY  "overrides"
+#define SCALING_FACTOR_KEY      "scaling-factor"
 
 /* X servers sometimes lie about the screen's physical dimensions, so we cannot
  * compute an accurate DPI value.  When this happens, the user gets fonts that
@@ -101,10 +103,11 @@ struct _TranslationEntry {
 struct UkuiXSettingsManagerPrivate
 {
         XSettingsManager **managers;
-        GHashTable        *gsettings;
-        GSettings         *gsettings_font;
-        GSettings         *plugin_settings;
+        GHashTable *gsettings;
+        GSettings *gsettings_font;
+        GSettings *plugin_settings;
         fontconfig_monitor_handle_t *fontconfig_handle;
+        gint window_scale;
 };
 
 #define USD_XSETTINGS_ERROR usd_xsettings_error_quark ()
@@ -191,8 +194,8 @@ translate_string_string_toolbar (UkuiXSettingsManager  *manager,
 }
 
 /* Func: translate_string_string_window_buttons
- * Set window button layout 
- * 设置窗口按钮布局   
+ * Set window button layout
+ * 设置窗口按钮布局
  */
 static void
 translate_string_string_window_buttons (UkuiXSettingsManager *manager,
@@ -230,7 +233,7 @@ translate_string_string_window_buttons (UkuiXSettingsManager *manager,
              * construct the string with the : separator */
             gchar **split = g_strsplit (tmp, ":", 2);
             final_str = g_strdup_printf ("%s,menu:%s", split[0], split[1]);
-            
+
             g_strfreev (split);
         }
    } else {
@@ -265,17 +268,16 @@ static TranslationEntry translations [] = {
         { INTERFACE_SCHEMA, "gtk-im-module",          "Gtk/IMModule",                  translate_string_string },
         { INTERFACE_SCHEMA, "icon-theme",             "Net/IconThemeName",             translate_string_string },
         { INTERFACE_SCHEMA, "file-chooser-backend",   "Gtk/FileChooserBackend",        translate_string_string },
-        
         { INTERFACE_SCHEMA, "gtk-decoration-layout",  "Gtk/DecorationLayout",          translate_string_string_window_buttons },
-
-        { INTERFACE_SCHEMA, "gtk-shell-shows-app-menu","Gtk/ShellShowsAppMenu",        translate_bool_int },
-        { INTERFACE_SCHEMA, "gtk-shell-shows-menubar","Gtk/ShellShowsMenubar",         translate_bool_int },
+//        { INTERFACE_SCHEMA, "gtk-shell-shows-app-menu","Gtk/ShellShowsAppMenu",        translate_bool_int },
+//        { INTERFACE_SCHEMA, "gtk-shell-shows-menubar","Gtk/ShellShowsMenubar",         translate_bool_int },
         { INTERFACE_SCHEMA, "menus-have-icons",       "Gtk/MenuImages",                translate_bool_int },
         { INTERFACE_SCHEMA, "buttons-have-icons",     "Gtk/ButtonImages",              translate_bool_int },
         { INTERFACE_SCHEMA, "menubar-accel",          "Gtk/MenuBarAccel",              translate_string_string },
         { INTERFACE_SCHEMA, "show-input-method-menu", "Gtk/ShowInputMethodMenu",       translate_bool_int },
         { INTERFACE_SCHEMA, "show-unicode-menu",      "Gtk/ShowUnicodeMenu",           translate_bool_int },
         { INTERFACE_SCHEMA, "automatic-mnemonics",    "Gtk/AutoMnemonics",             translate_bool_int },
+//        { INTERFACE_SCHEMA, "gtk-enable-primary-paste", "Gtk/EnablePrimaryPaste",      translate_bool_int },
         { INTERFACE_SCHEMA, "gtk-enable-animations",  "Gtk/EnableAnimations",          translate_bool_int },
         { INTERFACE_SCHEMA, "gtk-dialogs-use-header", "Gtk/DialogsUseHeader",          translate_bool_int },
 
@@ -284,53 +286,6 @@ static TranslationEntry translations [] = {
         { SOUND_SCHEMA, "input-feedback-sounds",      "Net/EnableInputFeedbackSounds", translate_bool_int }
 };
 
-/* Auto-detect the most appropriate scale factor for the primary monitor.
- * A lot of this code is copied and adapted from Linux Mint/Cinnamon.
- * 如果设置缩放为0，通过获取物理显示器的分辨率大小进行设置合适的DPI缩放
- */
-static int
-get_window_scale_auto ()
-{
-        GdkDisplay   *display;
-        GdkMonitor   *monitor;
-        GdkRectangle  rect;
-        int width_mm, height_mm;
-        int monitor_scale, window_scale;
-
-        display = gdk_display_get_default ();
-        monitor = gdk_display_get_primary_monitor (display);
-
-        /* Use current value as the default */
-        window_scale = 1;
-
-        gdk_monitor_get_geometry (monitor, &rect);
-        width_mm = gdk_monitor_get_width_mm (monitor);
-        height_mm = gdk_monitor_get_height_mm (monitor);
-        monitor_scale = gdk_monitor_get_scale_factor (monitor);
-
-        if (rect.height * monitor_scale < HIDPI_MIN_HEIGHT)
-                return 1;
-
-        /* Some monitors/TV encode the aspect ratio (16/9 or 16/10) instead of the physical size */
-        if ((width_mm == 160 && height_mm == 90) ||
-            (width_mm == 160 && height_mm == 100) ||
-            (width_mm == 16 && height_mm == 9) ||
-            (width_mm == 16 && height_mm == 10))
-                return 1;
-
-        if (width_mm > 0 && height_mm > 0) {
-                double dpi_x, dpi_y;
-
-                dpi_x = (double)rect.width * monitor_scale / (width_mm / 25.4);
-                dpi_y = (double)rect.height * monitor_scale / (height_mm / 25.4);
-                /* We don't completely trust these values so both must be high, and never pick
-                 * higher ratio than 2 automatically */
-                if (dpi_x > HIDPI_LIMIT && dpi_y > HIDPI_LIMIT)
-                        window_scale = 2;
-        }
-
-        return window_scale;
-}
 
 /* Get the key value to set the zoom
  * 获取要设置缩放的键值
@@ -343,11 +298,11 @@ get_window_scale (UkuiXSettingsManager *manager)
 
         /* Get scale factor from gsettings */
         gsettings = g_hash_table_lookup (manager->priv->gsettings, XSETTINGS_PLUGIN_SCHEMA);
-        scale = g_settings_get_int (gsettings, XSETTINGS_SCALING_KEY);
+        scale = g_settings_get_int (gsettings, SCALING_FACTOR_KEY);
 
         /* Auto-detect */
         if (scale == 0)
-                scale = get_window_scale_auto ();
+                scale = 1;
 
         return scale;
 }
@@ -375,10 +330,11 @@ get_dpi_from_x_server (void)
         screen = gdk_screen_get_default ();
         if (screen != NULL) {
                 double width_dpi, height_dpi;
-                Screen *xscreen = gdk_x11_screen_get_xscreen (screen);
 
-                width_dpi = dpi_from_pixels_and_mm (WidthOfScreen (xscreen), WidthMMOfScreen (xscreen)); //gdk_screen_get_width (screen), gdk_screen_get_width_mm (screen));
-                height_dpi = dpi_from_pixels_and_mm (HeightOfScreen (xscreen), HeightMMOfScreen (xscreen)); //gdk_screen_get_height (screen), gdk_screen_get_height_mm (screen));
+                Screen *xscreen = gdk_x11_screen_get_xscreen (screen);
+                
+                width_dpi = dpi_from_pixels_and_mm (WidthOfScreen (xscreen), WidthMMOfScreen (xscreen));//gdk_screen_get_width (screen), gdk_screen_get_width_mm (screen));
+                height_dpi = dpi_from_pixels_and_mm (HeightOfScreen (xscreen), HeightMMOfScreen (xscreen));//gdk_screen_get_height (screen), gdk_screen_get_height_mm (screen));
 
                 if (width_dpi < DPI_LOW_REASONABLE_VALUE || width_dpi > DPI_HIGH_REASONABLE_VALUE
                     || height_dpi < DPI_LOW_REASONABLE_VALUE || height_dpi > DPI_HIGH_REASONABLE_VALUE) {
@@ -408,10 +364,9 @@ get_dpi_from_gsettings_or_x_server (GSettings *gsettings)
          * fonts which are unusable.
          */
 
-        if (dpi == 0) {
+        if (dpi == 0) 
                 dpi = get_dpi_from_x_server ();
-        }
-
+        
         return dpi;
 }
 
@@ -435,6 +390,7 @@ static const char *rgba_types[] = { "rgb", "bgr", "vbgr", "vrgb" };
 /* Read GSettings values and determine the appropriate Xft settings based on them
  * This probably could be done a bit more cleanly with g_settings_get_enum
  */
+
 static void
 xft_settings_get (UkuiXSettingsManager *manager,
                   UkuiXftSettings *settings)
@@ -447,23 +403,24 @@ xft_settings_get (UkuiXSettingsManager *manager,
         gint       scale;
 
         mouse_gsettings = g_hash_table_lookup (manager->priv->gsettings, MOUSE_SCHEMA);
-
         antialiasing = g_settings_get_string (manager->priv->gsettings_font, FONT_ANTIALIASING_KEY);
         hinting = g_settings_get_string (manager->priv->gsettings_font, FONT_HINTING_KEY);
         rgba_order = g_settings_get_string (manager->priv->gsettings_font, FONT_RGBA_ORDER_KEY);
         dpi = get_dpi_from_gsettings_or_x_server (manager->priv->gsettings_font);
         scale = get_window_scale (manager);
-
-        settings->antialias = TRUE;
+	
+	    settings->antialias = TRUE;
         settings->hinting = TRUE;
         settings->hintstyle = "hintslight";
+        
         settings->window_scale = scale;
         settings->dpi = dpi * 1024; /* Xft wants 1/1024ths of an inch */
         settings->scaled_dpi = dpi * scale * 1024;
 
         settings->cursor_theme = g_settings_get_string (mouse_gsettings, CURSOR_THEME_KEY);
-        settings->cursor_size = g_settings_get_int (mouse_gsettings, CURSOR_SIZE_KEY) * scale;
+        settings->cursor_size = g_settings_get_int(mouse_gsettings,CURSOR_SIZE_KEY) * scale;
         settings->rgba = "rgb";
+        
 
         if (rgba_order) {
                 int i;
@@ -541,7 +498,6 @@ xft_settings_set_xsettings (UkuiXSettingsManager *manager,
                 xsettings_manager_set_int (manager->priv->managers [i], "Gdk/WindowScalingFactor", settings->window_scale);
                 xsettings_manager_set_int (manager->priv->managers [i], "Gdk/UnscaledDPI", settings->dpi);
                 xsettings_manager_set_int (manager->priv->managers [i], "Xft/DPI", settings->scaled_dpi);
-                
                 xsettings_manager_set_string (manager->priv->managers [i], "Xft/RGBA", settings->rgba);
                 xsettings_manager_set_string (manager->priv->managers [i], "Xft/lcdfilter",
                                               g_str_equal (settings->rgba, "rgb") ? "lcddefault" : "none");
@@ -605,7 +561,8 @@ xft_settings_set_xresources (UkuiXftSettings *settings)
 		strncpy(tmpCursorTheme, settings->cursor_theme, 255);
 	} else {
 		// unset, use default
-		strncpy(tmpCursorTheme, "DMZ-White", 255);
+		strncpy(tmpCursorTheme, "Breeze_Snow", 255);
+	    //syslog(LOG_INFO, "use default theme name=%s=", tmpCursorTheme);
 	}
 	if (settings->cursor_size > 0) {
 		tmpCursorSize = settings->cursor_size;
@@ -622,7 +579,10 @@ xft_settings_set_xresources (UkuiXftSettings *settings)
     XreFilePath = g_build_filename (g_get_home_dir (), ".Xresources", NULL);
     date = g_malloc (128);
     g_sprintf(date,"Xft.dpi:%d\nXcursor.size:%d\nXcursor.theme:%s\n",
-                    settings->scaled_dpi/1024, settings->cursor_size, tmpCursorTheme);
+                    settings->scaled_dpi/1024, 
+                    settings->cursor_size,
+                    tmpCursorTheme);
+
     res = g_file_set_contents(XreFilePath,date,strlen(date),NULL);
     if(!res)
         g_debug("Xresources File write failed ");
@@ -748,7 +708,7 @@ override_callback (GSettings             *settings,
         int i;
 
         value = g_settings_get_value (settings, XSETTINGS_OVERRIDE_KEY);
-
+        
         for (i = 0; manager->priv->managers[i]; i++) {
                 xsettings_manager_set_overrides (manager->priv->managers[i], value);
         }
@@ -765,7 +725,6 @@ plugin_callback (GSettings             *settings,
                  const char            *key,
                  UkuiXSettingsManager  *manager)
 {
-
     if (g_str_equal (key, XSETTINGS_OVERRIDE_KEY)) {
         override_callback (settings, key, manager);
     }
@@ -858,12 +817,12 @@ xsettings_callback (GSettings             *gsettings,
         int               i;
         GVariant         *value;
 
-        if (g_str_equal (key, XSETTINGS_SCALING_KEY )||
-            g_str_equal (key, CURSOR_THEME_KEY )||
-            g_str_equal (key, CURSOR_SIZE_KEY  )){
+        if (g_str_equal (key, CURSOR_THEME_KEY   ) ||
+            g_str_equal (key, SCALING_FACTOR_KEY ) ||
+            g_str_equal (key, CURSOR_SIZE_KEY    )){
                 xft_callback (NULL, key, manager);
                 return;
-	    }
+	}
 
         trans = find_translation_entry (gsettings, key);
         if (trans == NULL) {
@@ -946,9 +905,9 @@ gboolean
 ukui_xsettings_manager_start (UkuiXSettingsManager *manager,
                                GError               **error)
 {
+        GVariant    *overrides;
         guint        i;
         GList       *list, *l;
-        GVariant    *overrides;
 
         g_debug ("Starting xsettings manager");
         ukui_settings_profile_start (NULL);
@@ -986,10 +945,10 @@ ukui_xsettings_manager_start (UkuiXSettingsManager *manager,
                 gsettings = g_hash_table_lookup (manager->priv->gsettings,
                                                 translations[i].gsettings_schema);
 
-		        if (gsettings == NULL) {
-			        g_warning ("Schemas '%s' has not been setup", translations[i].gsettings_schema);
-			        continue;
-		        }
+		if (gsettings == NULL) {
+			g_warning ("Schemas '%s' has not been setup", translations[i].gsettings_schema);
+			continue;
+		}
 
                 val = g_settings_get_value (gsettings, translations[i].gsettings_key);
 
@@ -998,8 +957,8 @@ ukui_xsettings_manager_start (UkuiXSettingsManager *manager,
         }
 
         manager->priv->gsettings_font = g_settings_new (FONT_RENDER_SCHEMA);
-        g_signal_connect (manager->priv->gsettings_font, "changed", G_CALLBACK (xft_callback), manager);
-        
+        g_signal_connect_object (manager->priv->gsettings_font, "changed", G_CALLBACK (xft_callback), manager, 0);
+
         /* Plugin settings (GTK modules and Xft) */
         manager->priv->plugin_settings = g_settings_new (XSETTINGS_PLUGIN_SCHEMA);
         g_signal_connect_object (manager->priv->plugin_settings, "changed", G_CALLBACK (plugin_callback), manager, 0);
@@ -1007,7 +966,7 @@ ukui_xsettings_manager_start (UkuiXSettingsManager *manager,
         update_xft_settings (manager);
 
         start_fontconfig_monitor (manager);
-
+        
         overrides = g_settings_get_value (manager->priv->plugin_settings, XSETTINGS_OVERRIDE_KEY);
         for (i = 0; manager->priv->managers [i]; i++){
                 xsettings_manager_set_string (manager->priv->managers [i],
@@ -1019,7 +978,7 @@ ukui_xsettings_manager_start (UkuiXSettingsManager *manager,
         for (i = 0; manager->priv->managers [i]; i++) {
                 xsettings_manager_notify (manager->priv->managers [i]);
         }
-
+        
         g_variant_unref (overrides);
         ukui_settings_profile_end (NULL);
 
@@ -1060,6 +1019,7 @@ ukui_xsettings_manager_stop (UkuiXSettingsManager *manager)
 
 }
 
+
 static GObject *
 ukui_xsettings_manager_constructor(GType                    type,
                                    guint                    n_construct_properties,
@@ -1070,7 +1030,6 @@ ukui_xsettings_manager_constructor(GType                    type,
     xsettings_manager = UKUI_XSETTINGS_MANAGER (G_OBJECT_CLASS(ukui_xsettings_manager_parent_class)->constructor (type,
                                                                                                                   n_construct_properties,
                                                                                                                   construct_properties));
-
     return G_OBJECT (xsettings_manager);
 
 }
@@ -1079,7 +1038,7 @@ static void
 ukui_xsettings_manager_class_init (UkuiXSettingsManagerClass *klass)
 {
         GObjectClass *object_class = G_OBJECT_CLASS (klass);
-        
+
         object_class->constructor = ukui_xsettings_manager_constructor;
         object_class->finalize = ukui_xsettings_manager_finalize;
 

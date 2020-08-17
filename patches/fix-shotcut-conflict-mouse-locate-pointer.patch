@@ -1,0 +1,72 @@
+Index: ukui-settings-daemon-1.2.1/data/org.ukui.font-rendering.gschema.xml.in
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/data/org.ukui.font-rendering.gschema.xml.in	2020-07-06 20:44:44.000000000 +0800
++++ ukui-settings-daemon-1.2.1/data/org.ukui.font-rendering.gschema.xml.in	2020-07-28 16:19:14.045827108 +0800
+@@ -18,7 +18,7 @@
+   </enum>
+   <schema id="org.ukui.font-rendering" path="/org/ukui/desktop/font-rendering/">
+     <key name="dpi" type="d">
+-      <default>0.0</default>
++      <default>96.0</default>
+       <summary>DPI</summary>
+       <description>The resolution used for converting font sizes to pixel sizes,  in dots per inch.</description>
+     </key>
+Index: ukui-settings-daemon-1.2.1/plugins/mouse/usd-locate-pointer.c
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/plugins/mouse/usd-locate-pointer.c	2020-06-28 09:45:12.000000000 +0800
++++ ukui-settings-daemon-1.2.1/plugins/mouse/usd-locate-pointer.c	2020-07-28 16:22:22.545267542 +0800
+@@ -424,20 +424,20 @@
+                                            group,
+                                            &keyval,
+                                            NULL, NULL, NULL);
+-      if (keyval == GDK_KEY_Control_L || keyval == GDK_KEY_Control_R)
++      if ( (keyval == GDK_KEY_m || keyval == GDK_KEY_M) && (xev->xkey.state == 5) )
+         {
+           if (xev->type == KeyRelease)
+             {
+               XAllowEvents (xev->xkey.display,
+                             SyncKeyboard,
+                             xev->xkey.time);
++              usd_locate_pointer (screen);
+             }
+           else
+             {
+               XAllowEvents (xev->xkey.display,
+                             AsyncKeyboard,
+                             xev->xkey.time);
+-              usd_locate_pointer (screen);
+             }
+         }
+       else
+@@ -461,7 +461,8 @@
+   int n_screens;
+   int n_keys;
+   gboolean has_entries;
+-  static const guint keyvals[] = { GDK_KEY_Control_L, GDK_KEY_Control_R };
++  //static const guint keyvals[] = { GDK_KEY_Control_L, GDK_KEY_Control_R };
++  static const guint keyvals[] = { GDK_KEY_m, GDK_KEY_M};
+   unsigned j;
+ 
+   display = gdk_display_get_default ();
+@@ -492,11 +493,12 @@
+ 
+                   XGrabKey (GDK_DISPLAY_XDISPLAY (display),
+                             keys[i].keycode,
+-                            0,
++                            AnyModifier,
+                             xroot,
+                             False,
+                             GrabModeAsync,
+                             GrabModeSync);
++                  /*
+                   XGrabKey (GDK_DISPLAY_XDISPLAY (display),
+                             keys[i].keycode,
+                             LockMask,
+@@ -518,6 +520,7 @@
+                             False,
+                             GrabModeAsync,
+                             GrabModeSync);
++                  */
+                 }
+             }
+ 

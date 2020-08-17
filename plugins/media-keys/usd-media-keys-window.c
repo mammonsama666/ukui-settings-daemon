@@ -402,51 +402,45 @@ draw_volume_boxes (UsdMediaKeysWindow *window,
                    double              height)
 {
         gdouble   x1;
-        gdouble   y1;
-        GtkStyleContext *context;
+        GdkColor  color;
+        double    r, g, b;
+        GtkStyle *style;
 
+        _x0 += 0.5;
+        _y0 += 0.5;
         height = round (height) - 1;
         width = round (width) - 1;
         x1 = round ((width - 1) * percentage);
-        y1 = round (_y0 + height -(height - 1) * percentage);
-        context = gtk_widget_get_style_context (GTK_WIDGET (window));
+        style = gtk_widget_get_style (GTK_WIDGET (window));
 
         /* bar background */
-        gtk_style_context_save (context);
-        gtk_style_context_add_class (context, GTK_STYLE_CLASS_TROUGH);
-        {
-            GtkCssProvider *provider = gtk_css_provider_new ();
-            gtk_css_provider_load_from_data(provider, ".progressbar-background {background-color:rgba(0,0,0,0.5);}", -1, NULL);
-            gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-            g_object_unref (provider);
-            gtk_style_context_add_class (context, "progressbar-background");
-            //gtk_render_background (context, cr, _x0 + 0.5, y1 + 0.5, width - 1, _y0 + height - y1 - 1);
-            gtk_render_background (context, cr, _x0, y1, width - 1, _y0 + height - y1 - 1);
-        }
-        gtk_render_background (context, cr, _x0, _y0, width, height);
-        //gtk_render_frame (context, cr, _x0, _y0, width, height);
+        usd_osd_window_color_reverse (&style->dark[GTK_STATE_NORMAL], &color);
+        r = (float)color.red / 65535.0;
+        g = (float)color.green / 65535.0;
+        b = (float)color.blue / 65535.0;
+        usd_osd_window_draw_rounded_rectangle (cr, 1.0, _x0, _y0, height / 6, width, height);
+        cairo_set_source_rgba (cr, r, g, b, USD_OSD_WINDOW_FG_ALPHA / 2);
+        cairo_fill_preserve (cr);
 
-        gtk_style_context_restore (context);
+        /* bar border */
+        usd_osd_window_color_reverse (&style->light[GTK_STATE_NORMAL], &color);
+        r = (float)color.red / 65535.0;
+        g = (float)color.green / 65535.0;
+        b = (float)color.blue / 65535.0;
+        cairo_set_source_rgba (cr, r, g, b, USD_OSD_WINDOW_FG_ALPHA / 2);
+        cairo_set_line_width (cr, 1);
+        cairo_stroke (cr);
 
         /* bar progress */
         if (percentage < 0.01)
                 return;
-
-        gtk_style_context_save (context);
-        gtk_style_context_add_class (context, GTK_STYLE_CLASS_PROGRESSBAR);
-        {
-            GtkCssProvider *provider = gtk_css_provider_new ();
-            gtk_css_provider_load_from_data(provider, ".progressbar-through{background-color:rgba(255,255,255,0.8);}", -1, NULL);
-            gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-            g_object_unref (provider);
-            gtk_style_context_add_class (context, "progressbar-through");
-            //gtk_render_background (context, cr, _x0 + 0.5, y1 + 0.5, width - 1, _y0+height - y1 - 1);
-            gtk_render_background (context, cr, _x0 , y1 , width - 1, _y0 + height - y1 - 1);
-		}
-        gtk_style_context_restore (context);
-        gtk_style_context_save (context);
-        // gtk_render_frame (context, cr, _x0 + 0.5, y1 + 0.5, width - 1, _y0 + height -y1 - 1);
-        gtk_style_context_restore (context);
+        color = style->bg[GTK_STATE_NORMAL];
+        r = (float)color.red / 65535.0;
+        g = (float)color.green / 65535.0;
+        b = (float)color.blue / 65535.0;
+        usd_osd_window_draw_rounded_rectangle (cr, 1.0, _x0 + 0.5, _y0 + 0.5, height / 6 - 0.5, x1, height - 1);
+        cairo_set_source_rgba (cr, r, g, b, USD_OSD_WINDOW_FG_ALPHA);
+        cairo_fill (cr);
 }
 
 static void
@@ -651,7 +645,11 @@ draw_action_custom (UsdMediaKeysWindow *window,
 }
 
 static void
+#if GTK_CHECK_VERSION (3, 0, 0)
 usd_media_keys_window_draw_when_composited (UsdOsdWindow *osd_window,
+#else
+usd_media_keys_window_expose_when_composited (UsdOsdWindow *osd_window,
+#endif
                                               cairo_t      *cr)
 {
         UsdMediaKeysWindow *window = USD_MEDIA_KEYS_WINDOW (osd_window);
@@ -673,7 +671,11 @@ usd_media_keys_window_class_init (UsdMediaKeysWindowClass *klass)
 {
         UsdOsdWindowClass *osd_window_class = USD_OSD_WINDOW_CLASS (klass);
 
+#if GTK_CHECK_VERSION (3, 0, 0)
         osd_window_class->draw_when_composited = usd_media_keys_window_draw_when_composited;
+#else
+        osd_window_class->expose_when_composited = usd_media_keys_window_expose_when_composited;
+#endif
 
         g_type_class_add_private (klass, sizeof (UsdMediaKeysWindowPrivate));
 }

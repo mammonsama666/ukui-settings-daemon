@@ -34,6 +34,7 @@
 
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
@@ -304,7 +305,7 @@ apply_bell (UsdKeyboardManager *manager)
                                 &kbdcontrol);
 
         XSync (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), FALSE);
-        //gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static void
@@ -358,6 +359,7 @@ apply_repeat (UsdKeyboardManager *manager)
 
         XSync (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), FALSE);
         //gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static void
@@ -380,7 +382,7 @@ apply_settings (GSettings          *settings,
              * Negate is reset the status of the lamp.
              */
             numlock_set_xkb_state (numlock_get_settings_state (settings));
-            capslock_set_xkb_state(g_settings_get_boolean(settings, KET_CAPSLOCK_STATE));
+            capslock_set_xkb_state(g_settings_get_boolean(settings,KET_CAPSLOCK_STATE));
         }
     }
 #endif /* HAVE_X11_EXTENSIONS_XKB_H */
@@ -413,7 +415,6 @@ usd_keyboard_manager_apply_settings (UsdKeyboardManager *manager)
 }
 
 
-/* Set ScrollLock state*/
 #define KEYBOARD_GROUP_SHIFT 13
 #define KEYBOARD_GROUP_MASK ((1 << 13) | (1 << 14))
 static GdkFilterReturn
@@ -469,7 +470,6 @@ scroll_event_filter (GdkXEvent *xevent,
 static void 
 scroll_lock_install()
 {
-
         /* Add Scroll_Lock key monitoring*/
         system("xmodmap -e 'add mod3 = Scroll_Lock'");
 #if 0
@@ -483,7 +483,11 @@ scroll_lock_install()
                                                        &n_keys);
         Window xroot;
         GdkScreen *screen = gdk_screen_get_default();
+#if GTK_CHECK_VERSION (3, 0, 0)
         xroot = gdk_x11_window_get_xid (gdk_screen_get_root_window (screen));
+#else
+        xroot = gdk_x11_drawable_get_xid (gdk_screen_get_root_window (screen));
+#endif
         XGrabKey (GDK_DISPLAY_XDISPLAY (display),
                             keys[0].keycode,
                             AnyModifier,
@@ -491,7 +495,7 @@ scroll_lock_install()
                             False,
                             GrabModeAsync,
                             GrabModeSync);
-	    gdk_window_add_filter (gdk_screen_get_root_window (screen),
+	gdk_window_add_filter (gdk_screen_get_root_window (screen),
                                      scroll_event_filter,  screen);
 #endif
 }

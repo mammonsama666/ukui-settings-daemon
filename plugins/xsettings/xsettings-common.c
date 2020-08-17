@@ -77,6 +77,7 @@ xsettings_setting_set (XSettingsSetting *setting,
   old_value = xsettings_setting_get (setting);
   if (old_value)
     g_variant_ref (old_value);
+  
   if (setting->value[tier])
     g_variant_unref (setting->value[tier]);
   setting->value[tier] = value ? g_variant_ref_sink (value) : NULL;

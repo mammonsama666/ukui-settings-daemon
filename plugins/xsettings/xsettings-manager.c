@@ -215,7 +215,6 @@ xsettings_manager_set_setting (XSettingsManager *manager,
     }
 
   xsettings_setting_set (setting, tier, value, manager->serial);
-
   if (xsettings_setting_get (setting) == NULL)
     g_hash_table_remove (manager->settings, name);
 }
@@ -373,7 +372,6 @@ xsettings_manager_set_overrides (XSettingsManager *manager,
           xsettings_manager_set_setting (manager, key, 1, NULL);
       g_variant_unref (manager->overrides);
     }
-
   /* save this so we can do the unsets next time */
   manager->overrides = g_variant_ref_sink (overrides);
 

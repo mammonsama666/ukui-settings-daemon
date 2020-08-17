@@ -58,12 +58,12 @@ device_has_property (XDevice    *device,
         if ((XGetDeviceProperty (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), device, prop, 0, 1, False,
                                 XA_INTEGER, &realtype, &realformat, &nitems,
                                 &bytes_after, &data) == Success) && (realtype != None)) {
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop ();
                 XFree (data);
                 return TRUE;
         }
 
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop ();
         return FALSE;
 }
 

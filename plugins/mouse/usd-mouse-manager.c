@@ -18,6 +18,7 @@
  *
  */
 
+#include "syslog.h"
 #include "config.h"
 
 #include <sys/types.h>
@@ -238,7 +239,7 @@ touchpad_has_single_button (XDevice *device)
         if (rc == Success)
                 XFree (data);
 
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 
         return is_single_button;
 }
@@ -272,7 +273,7 @@ property_exists_on_device (XDeviceInfo *device_info,
                 XFree (data);
 
         XCloseDevice (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), device);
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 
         return rc == Success;
 }
@@ -331,7 +332,7 @@ touchpad_set_bool (XDeviceInfo *device_info,
 
         gdk_error_trap_push ();
         XCloseDevice (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), device);
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static void
@@ -434,7 +435,7 @@ set_left_handed_libinput (XDeviceInfo *device_info,
 
         gdk_error_trap_push ();
         XCloseDevice (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), device);
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static void
@@ -758,7 +759,7 @@ set_middle_button_libinput (XDeviceInfo *device_info,
         if (device != NULL) {
                 gdk_error_trap_push ();
                 XCloseDevice (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), device);
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop();
                 return;
         }
 
@@ -771,7 +772,7 @@ set_middle_button_libinput (XDeviceInfo *device_info,
 
         gdk_error_trap_push ();
         XCloseDevice (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()), device);
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static void
@@ -1524,7 +1525,7 @@ touchpad_callback (GSettings          *settings,
                 || (g_strcmp0 (key, KEY_TOUCHPAD_TWO_FINGER_TAP) == 0)
                 || (g_strcmp0 (key, KEY_TOUCHPAD_THREE_FINGER_TAP) == 0)) {
                 set_tap_to_click_all (manager);
-/* Do not set click actions since ukwm take over this
+/* Do not set click actions since ukwm take over this 
  *        } else if ((g_strcmp0 (key, KEY_TOUCHPAD_TWO_FINGER_CLICK) == 0)
  *               || (g_strcmp0 (key, KEY_TOUCHPAD_THREE_FINGER_CLICK) == 0)) {
  *               set_click_actions_all (manager);
@@ -1572,7 +1573,7 @@ usd_mouse_manager_idle_cb (UsdMouseManager *manager)
 
 #if 0   /* FIXME need to fork (?) mousetweaks for this to work */
         set_mousetweaks_daemon (manager,
-                                g_settings_get_boolean (manager->priv->settings_mouse_a11y,
+                                g_settings_get_boolean (manager->priv->settings_mouse_a11y, 
                                                         KEY_MOUSE_A11Y_DWELL_ENABLE),
                                 g_settings_get_boolean (manager->priv->settings_mouse_a11y,
                                                         KEY_MOUSE_A11Y_DELAY_ENABLE));

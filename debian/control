@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: Kylin Team <team+kylin@tracker.debian.org>
 Uploaders: Aron Xu <aron@debian.org>,
            handsome_feng <jianfengli@ubuntukylin.com>
-Build-Depends: debhelper-compat (= 12),
-               dpkg-dev (>= 1.16.1.1),
+Build-Depends: debhelper,
+               dpkg-dev,
                intltool,
                libcanberra-gtk3-dev,
                libdbus-glib-1-dev,
@@ -29,9 +29,9 @@ Build-Depends: debhelper-compat (= 12),
                libxrandr-dev,
                libxt-dev,
                mate-common,
+               mate-utils,
                x11proto-kb-dev,
 Standards-Version: 4.5.0
-Rules-Requires-Root: no
 Homepage: http://www.ukui.org/
 Vcs-Git: https://github.com/ukui/ukui-settings-daemon.git
 Vcs-Browser: https://github.com/ukui/ukui-settings-daemon
@@ -40,7 +40,6 @@ Package: ukui-settings-daemon
 Architecture: any
 Depends: mate-desktop-common,
          ukui-polkit,
-         mate-utils,
          ukui-settings-daemon-common (= ${source:Version}),
          x11-xserver-utils,
          ${misc:Depends},

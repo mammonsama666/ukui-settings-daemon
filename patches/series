@@ -1,0 +1,15 @@
+change-gnome-screenshot-to-mate-screenshot.patch
+0001-Add-DPI-zoom-to-file.patch
+0002-Add-4K-screen-to-switch-popups.patch
+Modify-Mouse-Theme-To-DMZ-Black.patch
+Improve-the-4K-HD-screen-zoom-mechanism.patch
+fix-shotcut-conflict-mouse-locate-pointer.patch
+Fix-the-problem-of-the-touch-screen-rotating-the-screen-pointer-position.patch
+0004-fix-background-issus.patch
+Shortcut-key-Sinicization.patch
+Fix-ukui-settings-daemon-crash.patch
+Fix-compilation-issues.patch
+Add-setting-ScrollLock-light-state.patch
+enable-mouse-location-pointer-when-capslock-on.patch
+Fix-custom-shortcut-keys-error.patch
+Fix-system-shortcut-keys-are-not-available.patch

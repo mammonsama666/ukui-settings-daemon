@@ -1,0 +1,15 @@
+Index: ukui-settings-daemon-1.2.1/plugins/xsettings/usd-xsettings-manager.c
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/plugins/xsettings/usd-xsettings-manager.c	2020-06-29 10:22:27.000000000 +0800
++++ ukui-settings-daemon-1.2.1/plugins/xsettings/usd-xsettings-manager.c	2020-07-20 11:51:32.394573938 +0800
+@@ -457,8 +457,8 @@
+ 		strncpy(tmpCursorTheme, settings->cursor_theme, 255);
+ 	} else {
+ 		// unset, use default
+-		strncpy(tmpCursorTheme, "Breeze_Snow", 255);
+-	        syslog(LOG_INFO, "use default theme name=%s=", tmpCursorTheme);
++		strncpy(tmpCursorTheme, "DMZ-white", 255);
++	    //syslog(LOG_INFO, "use default theme name=%s=", tmpCursorTheme);
+ 	}
+ 	if (settings->cursor_size > 0) {
+ 		tmpCursorSize = settings->cursor_size;

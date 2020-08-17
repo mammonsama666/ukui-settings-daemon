@@ -1,0 +1,24 @@
+Index: ukui-settings-daemon-1.2.1/po/zh_CN.po
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/po/zh_CN.po	2020-07-06 20:44:18.000000000 +0800
++++ ukui-settings-daemon-1.2.1/po/zh_CN.po	2020-08-04 16:17:41.083199008 +0800
+@@ -514,9 +514,8 @@
+ msgstr "锁住屏幕的键绑定。"
+ 
+ #: ../data/org.ukui.SettingsDaemon.plugins.media-keys.gschema.xml.in.h:31
+-#, fuzzy
+ msgid "Open System Settings"
+-msgstr "X 设置"
++msgstr "打开控制面板"
+ 
+ #: ../data/org.ukui.SettingsDaemon.plugins.media-keys.gschema.xml.in.h:32
+ #, fuzzy
+@@ -525,7 +524,7 @@
+ 
+ #: ../data/org.ukui.SettingsDaemon.plugins.media-keys.gschema.xml.in.h:33
+ msgid "Open File Manager"
+-msgstr ""
++msgstr "打开文件管理器"
+ 
+ #: ../data/org.ukui.SettingsDaemon.plugins.media-keys.gschema.xml.in.h:34
+ #, fuzzy

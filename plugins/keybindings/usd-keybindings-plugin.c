@@ -19,6 +19,7 @@
  */
 
 #include "config.h"
+#include "syslog.h"
 
 #include <glib/gi18n-lib.h>
 #include <gmodule.h>
@@ -73,6 +74,7 @@ impl_activate (UkuiSettingsPlugin *plugin)
         GError  *error;
 
         g_debug ("Activating keybindings plugin");
+        syslog (LOG_ERR, "Activating keybindings plugin");
 
         error = NULL;
         res = usd_keybindings_manager_start (USD_KEYBINDINGS_PLUGIN (plugin)->priv->manager, &error);

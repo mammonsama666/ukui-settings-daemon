@@ -333,7 +333,7 @@ binding_unregister_keys (UsdKeybindingsManager *manager)
         if (need_flush)
                 gdk_flush ();
 
-        gdk_error_trap_pop_ignored ();
+        gdk_error_trap_pop();
 }
 
 static void
@@ -487,6 +487,7 @@ keybindings_filter (GdkXEvent             *gdk_xevent,
                         }
 
                         envp = get_exec_environment (xevent);
+                        
                         /*
                         retval = g_spawn_async (NULL,
                                                 argv,
@@ -497,11 +498,12 @@ keybindings_filter (GdkXEvent             *gdk_xevent,
                                                 NULL,
                                                 &error);
                         */
-						char execPathName[255];
-						sprintf(execPathName, "%s%s", DESKTOP_APP_DIR, binding->action);
-						//syslog(LOG_ERR, "==shutcut==========%s========",execPathName);
+
+                        char execPathName[255];
+                        sprintf(execPathName, "%s%s", DESKTOP_APP_DIR, binding->action);
                         GDesktopAppInfo *info = g_desktop_app_info_new_from_filename(execPathName);
-						retval = g_app_info_launch_uris(info, NULL, NULL, NULL);
+                        retval = g_app_info_launch_uris(info, NULL, NULL, NULL);
+
                         g_strfreev (argv);
                         g_strfreev (envp);
 
@@ -573,7 +575,7 @@ usd_keybindings_manager_start (UsdKeybindingsManager *manager,
                 /* Add KeyPressMask to the currently reportable event masks */
                 XGetWindowAttributes (xdpy, xwindow, &atts);
                 XSelectInput (xdpy, xwindow, atts.your_event_mask | KeyPressMask);
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop();
         }
         manager->priv->screens = get_screens_list ();
 
@@ -630,6 +632,7 @@ usd_keybindings_manager_class_init (UsdKeybindingsManagerClass *klass)
 static void
 usd_keybindings_manager_init (UsdKeybindingsManager *manager)
 {
+        syslog(LOG_ERR, "=====usd_keybindings_manager_init");
         manager->priv = USD_KEYBINDINGS_MANAGER_GET_PRIVATE (manager);
 
 }

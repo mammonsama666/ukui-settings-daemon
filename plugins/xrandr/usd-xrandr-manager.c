@@ -41,8 +41,10 @@
 #include <gio/gio.h>
 #include <dbus/dbus-glib.h>
 
+/* add for touchscreen rotation */
 #include <X11/extensions/XInput2.h>
-#include <X11/Xlib.h>
+#include<X11/extensions/XI2.h>
+#include<X11/extensions/XI.h>
 
 #define MATE_DESKTOP_USE_UNSTABLE_API
 #include <libmate-desktop/mate-rr-config.h>
@@ -913,6 +915,7 @@ make_laptop_setup (MateRRScreen *screen)
          * one connected "laptop" screen?
          */
         return result;
+
 }
 
 static int
@@ -1398,7 +1401,6 @@ refresh_tray_icon_menu_if_active (UsdXrandrManager *manager, guint32 timestamp)
 }
 
 
-
 /* 
  * Function: show_question()  显示缩放弹窗
  * urpose :  When the system detects the high clear screen, the pops up change scale window 
@@ -1509,7 +1511,6 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
         gboolean once_scale;
         GSettings *settings = g_settings_new("org.ukui.font-rendering");
 
-
         config = mate_rr_config_new_current (priv->rw_screen, NULL);
 
         /* For outputs that are connected and on (i.e. they have a CRTC assigned
@@ -1558,9 +1559,10 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
 
                         mate_rr_output_info_get_geometry (output, NULL, NULL, &width, &height);
                         mate_rr_output_info_set_geometry (output, x, 0, width, height);
-		       /* Detect 4K screen switching and prompt whether to zoom.
-                        * 检测4K屏切换，并提示是否缩放 
-                        */
+                        
+                        /* Detect 4K screen switching and prompt whether to zoom.
+                         * 检测4K屏切换，并提示是否缩放 
+                         */
                         if(height > 2000){
                             double dpi = g_settings_get_double (settings,"dpi");
                             g_settings_set_int(settings,"screen-height1",height);
@@ -1577,7 +1579,7 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
                             g_settings_set_int(settings,"screen-height2",height);
                             once_scale = TRUE;
                         } 
-                        
+
                         x += width;
                 }
         }
@@ -1586,7 +1588,7 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
 
         for (l = just_turned_on; l; l = l->next) {
                 MateRROutputInfo *output;
-		int width,height;
+		int width, height;
 
                 i = GPOINTER_TO_INT (l->data);
                 output = outputs[i];
@@ -1598,7 +1600,7 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
                 height = mate_rr_output_info_get_preferred_height (output);
                 mate_rr_output_info_set_geometry (output, x, 0, width, height);
                 
-                 /* Detect 4K screen switching and prompt whether to zoom.
+                /* Detect 4K screen switching and prompt whether to zoom.
                   * 检测4K屏切换，并提示是否缩放 
                   */
                 if(height > 2000){
@@ -1619,6 +1621,7 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
                         one_scale_logout_dialog(settings);//设置缩放为1倍
                 } 
                 
+
                 x += width;
         }
 
@@ -1659,6 +1662,7 @@ auto_configure_outputs (UsdXrandrManager *manager, guint32 timestamp)
 
         if (applicable)
                 apply_configuration_and_display_error (manager, config, timestamp);
+                
         if(once_scale){
             double dpi = g_settings_get_double (settings,"dpi");
             if(dpi>96)
@@ -1709,18 +1713,84 @@ apply_color_profiles (void)
         }
 }
 
-/*检测到旋转，更改触摸屏鼠标光标位置*/
-void set_touchscreen_cursor(void *date)
+/*查找触摸屏设备ID*/
+static gboolean
+find_touchscreen_device(Display* display, XIDeviceInfo *dev)
 {
-        Display *xdisplay = XOpenDisplay(NULL);
-        Atom property_atom;
-        property_atom = XInternAtom (xdisplay, "Coordinate Transformation Matrix", True);
-        if (!property_atom)
+        int i, j;
+        if (dev->use != XISlavePointer)
+            return FALSE;
+        if (!dev->enabled)
+        {
+            printf("\tThis device is disabled\n");
+            return FALSE;
+        }
+
+        for (i = 0; i < dev->num_classes; i++)
+        {
+            if (dev->classes[i]->type == XITouchClass)
+            {
+                XITouchClassInfo *t = (XITouchClassInfo*)dev->classes[i];
+
+                if (t->mode == XIDirectTouch)
+                return TRUE;
+            }
+        }
+        return FALSE;
+}
+
+/*检测到旋转，更改触摸屏鼠标光标位置*/
+void set_touchscreen_cursor(float matrix[])
+{
+        int ts_device_id = 0;
+        Atom prop_float, prop_matrix;
+
+        union {
+            unsigned char *c;
+            float *f;
+        } data;
+
+        int format_return;
+        Atom type_return;
+
+        unsigned long nitems;
+        unsigned long bytes_after;
+
+        int rc;
+        int i, ndevices;
+        XIDeviceInfo *info;
+        Display *dpy = GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
+        info = XIQueryDevice(dpy, XIAllDevices, &ndevices);
+
+        for (i = 0; i < ndevices; i++)
+        {
+            if (find_touchscreen_device(dpy, &info[i]))
+            ts_device_id = info[i].deviceid;
+        }
+
+        if (ts_device_id == 0)
             return;
-        Atom type = XInternAtom (xdisplay, "FLOAT", False);
-        XIChangeProperty (xdisplay, XITouchClass, property_atom, type,
-                          32, XIPropModeReplace, date, 9);
-        XCloseDisplay(xdisplay);
+
+        prop_float = XInternAtom(dpy, "FLOAT", False);
+        prop_matrix = XInternAtom(dpy, "Coordinate Transformation Matrix", False);
+
+        if (!prop_float)
+            return;
+
+        if (!prop_matrix)
+            return;
+        rc = XIGetProperty (dpy, XITouchClass, prop_matrix, 0, 9, False,
+                            prop_float, &type_return, &format_return, &nitems, &bytes_after, &data.c);
+
+        if (rc != Success || prop_float != type_return || format_return != 32 ||
+            nitems != 9 || bytes_after != 0)
+            return;
+
+        memcpy(data.f, matrix, 9*sizeof(float));
+        XIChangeProperty (dpy, ts_device_id, prop_matrix, prop_float,
+                          format_return, PropModeReplace, data.c, nitems);
+
+        XIFreeDeviceInfo(info);
 }
 
 /* 设置触摸屏触点的角度 */
@@ -1778,10 +1848,7 @@ on_randr_event (MateRRScreen *screen, gpointer data)
         UsdXrandrManager *manager = USD_XRANDR_MANAGER (data);
         UsdXrandrManagerPrivate *priv = manager->priv;
         guint32 change_timestamp, config_timestamp;
-	
-        if (!priv->running)
-                return;
-        
+
         mate_rr_screen_get_timestamps (screen, &change_timestamp, &config_timestamp);
 
         log_open ();
@@ -1851,7 +1918,6 @@ on_randr_event (MateRRScreen *screen, gpointer data)
         /* 添加触摸屏鼠标设置 */
         set_touchscreen_cursor_rotation(screen);
 
-
         /* poke mate-color-manager */
         apply_color_profiles ();
 
@@ -1920,12 +1986,19 @@ status_icon_popup_menu_selection_done_cb (GtkMenuShell *menu_shell, gpointer dat
  * to see why that "after" handler is needed.
  */
 static gboolean
+#if GTK_CHECK_VERSION (3, 0, 0)
 output_title_label_draw_cb (GtkWidget *widget, cairo_t *cr, gpointer data)
+#else
+output_title_label_expose_event_cb (GtkWidget *widget, GdkEventExpose *event, gpointer data)
+#endif
 {
         UsdXrandrManager *manager = USD_XRANDR_MANAGER (data);
         struct UsdXrandrManagerPrivate *priv = manager->priv;
         MateRROutputInfo *output;
-        GdkRGBA color;
+        GdkColor color;
+#if !GTK_CHECK_VERSION (3, 0, 0)
+        cairo_t *cr;
+#endif
         GtkAllocation allocation;
 
         g_assert (GTK_IS_LABEL (widget));
@@ -1936,7 +2009,12 @@ output_title_label_draw_cb (GtkWidget *widget, cairo_t *cr, gpointer data)
         g_assert (priv->labeler != NULL);
 
         /* Draw a black rectangular border, filled with the color that corresponds to this output */
-        mate_rr_labeler_get_rgba_for_output (priv->labeler, output, &color);
+
+        mate_rr_labeler_get_color_for_output (priv->labeler, output, &color);
+
+#if !GTK_CHECK_VERSION (3, 0, 0)
+        cr = gdk_cairo_create (gtk_widget_get_window (widget));
+#endif
 
         cairo_set_source_rgb (cr, 0, 0, 0);
         cairo_set_line_width (cr, OUTPUT_TITLE_ITEM_BORDER);
@@ -1948,7 +2026,7 @@ output_title_label_draw_cb (GtkWidget *widget, cairo_t *cr, gpointer data)
                          allocation.height - OUTPUT_TITLE_ITEM_BORDER);
         cairo_stroke (cr);
 
-        gdk_cairo_set_source_rgba (cr, &color);
+        gdk_cairo_set_source_color (cr, &color);
         cairo_rectangle (cr,
                          allocation.x + OUTPUT_TITLE_ITEM_BORDER,
                          allocation.y + OUTPUT_TITLE_ITEM_BORDER,
@@ -1970,12 +2048,19 @@ output_title_label_draw_cb (GtkWidget *widget, cairo_t *cr, gpointer data)
 
         gtk_widget_set_state (widget, GTK_STATE_NORMAL);
 
+#if !GTK_CHECK_VERSION (3, 0, 0)
+        cairo_destroy (cr);
+#endif
         return FALSE;
 }
 
 /* See the comment in output_title_event_box_expose_event_cb() about this funny label widget */
 static gboolean
+#if GTK_CHECK_VERSION (3, 0, 0)
 output_title_label_after_draw_cb (GtkWidget *widget, cairo_t *cr, gpointer data)
+#else
+output_title_label_after_expose_event_cb (GtkWidget *widget, GdkEventExpose *event, gpointer data)
+#endif
 {
         g_assert (GTK_IS_LABEL (widget));
         gtk_widget_set_state (widget, GTK_STATE_INSENSITIVE);
@@ -2063,10 +2148,17 @@ make_menu_item_for_output_title (UsdXrandrManager *manager, MateRROutputInfo *ou
          * to its expose-event signal.  See the comment in *** to see why need to connect
          * to the label both 'before' and 'after'.
          */
+#if GTK_CHECK_VERSION (3, 0, 0)
         g_signal_connect (label, "draw",
                           G_CALLBACK (output_title_label_draw_cb), manager);
         g_signal_connect_after (label, "draw",
                                 G_CALLBACK (output_title_label_after_draw_cb) , manager);
+#else
+        g_signal_connect (label, "expose-event",
+                          G_CALLBACK (output_title_label_expose_event_cb), manager);
+        g_signal_connect_after (label, "expose-event",
+                                G_CALLBACK (output_title_label_after_expose_event_cb), manager);
+#endif
 
         g_object_set_data (G_OBJECT (label), "output", output);
 
@@ -2334,6 +2426,7 @@ status_icon_popup_menu (UsdXrandrManager *manager, guint button, guint32 timesta
         g_signal_connect (priv->popup_menu, "selection-done",
                           G_CALLBACK (status_icon_popup_menu_selection_done_cb), manager);
                           
+#if GTK_CHECK_VERSION (3, 0, 0)
         /*Set up custom theming and forced transparency support*/
         GtkWidget *toplevel = gtk_widget_get_toplevel (priv->popup_menu);
         /*Fix any failures of compiz/other wm's to communicate with gtk for transparency */
@@ -2343,9 +2436,10 @@ status_icon_popup_menu (UsdXrandrManager *manager, guint button, guint32 timesta
         /*Set up the gtk theme class from ukui-panel*/
         GtkStyleContext *context;
         context = gtk_widget_get_style_context (GTK_WIDGET(toplevel));
+        gtk_style_context_remove_class (context,GTK_STYLE_CLASS_BACKGROUND);
         gtk_style_context_add_class(context,"gnome-panel-menu-bar");
         gtk_style_context_add_class(context,"ukui-panel-menu-bar");
-
+#endif
         gtk_menu_popup (GTK_MENU (priv->popup_menu), NULL, NULL,
                         gtk_status_icon_position_menu,
                         priv->status_icon, button, timestamp);
@@ -2522,6 +2616,7 @@ apply_stored_configuration_at_startup (UsdXrandrManager *manager, guint32 timest
         success = apply_intended_configuration (manager, intended_filename, timestamp);
 
 out:
+
         if (my_error)
                 g_error_free (my_error);
 
@@ -2590,7 +2685,7 @@ usd_xrandr_manager_start (UsdXrandrManager *manager,
                           True, GrabModeAsync, GrabModeAsync);
 
                 gdk_flush ();
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop ();
         }
 
         if (manager->priv->rotate_windows_keycode) {
@@ -2602,7 +2697,7 @@ usd_xrandr_manager_start (UsdXrandrManager *manager,
                           True, GrabModeAsync, GrabModeAsync);
 
                 gdk_flush ();
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop ();
         }
 
         show_timestamps_dialog (manager, "Startup");
@@ -2618,9 +2713,9 @@ usd_xrandr_manager_start (UsdXrandrManager *manager,
                                (GdkFilterFunc)event_filter,
                                manager);
         
+
         /* 添加触摸屏鼠标设置 */
         set_touchscreen_cursor_rotation(manager->priv->rw_screen);
-
 
         start_or_stop_icon (manager);
 
@@ -2645,7 +2740,7 @@ usd_xrandr_manager_stop (UsdXrandrManager *manager)
                             manager->priv->switch_video_mode_keycode, AnyModifier,
                             gdk_x11_get_default_root_xwindow());
 
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop ();
         }
 
         if (manager->priv->rotate_windows_keycode) {
@@ -2655,7 +2750,7 @@ usd_xrandr_manager_stop (UsdXrandrManager *manager)
                             manager->priv->rotate_windows_keycode, AnyModifier,
                             gdk_x11_get_default_root_xwindow());
 
-                gdk_error_trap_pop_ignored ();
+                gdk_error_trap_pop ();
         }
 
         gdk_window_remove_filter (gdk_get_default_root_window (),
@@ -2685,10 +2780,75 @@ usd_xrandr_manager_stop (UsdXrandrManager *manager)
 }
 
 static void
+usd_xrandr_manager_set_property (GObject        *object,
+                               guint           prop_id,
+                               const GValue   *value,
+                               GParamSpec     *pspec)
+{
+        UsdXrandrManager *self;
+
+        self = USD_XRANDR_MANAGER (object);
+
+        switch (prop_id) {
+        default:
+                G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+                break;
+        }
+}
+
+static void
+usd_xrandr_manager_get_property (GObject        *object,
+                               guint           prop_id,
+                               GValue         *value,
+                               GParamSpec     *pspec)
+{
+        UsdXrandrManager *self;
+
+        self = USD_XRANDR_MANAGER (object);
+
+        switch (prop_id) {
+        default:
+                G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+                break;
+        }
+}
+
+static GObject *
+usd_xrandr_manager_constructor (GType                  type,
+                              guint                  n_construct_properties,
+                              GObjectConstructParam *construct_properties)
+{
+        UsdXrandrManager      *xrandr_manager;
+        UsdXrandrManagerClass *klass;
+
+        klass = USD_XRANDR_MANAGER_CLASS (g_type_class_peek (USD_TYPE_XRANDR_MANAGER));
+
+        xrandr_manager = USD_XRANDR_MANAGER (G_OBJECT_CLASS (usd_xrandr_manager_parent_class)->constructor (type,
+                                                                                                      n_construct_properties,
+                                                                                                      construct_properties));
+
+        return G_OBJECT (xrandr_manager);
+}
+
+static void
+usd_xrandr_manager_dispose (GObject *object)
+{
+        UsdXrandrManager *xrandr_manager;
+
+        xrandr_manager = USD_XRANDR_MANAGER (object);
+
+        G_OBJECT_CLASS (usd_xrandr_manager_parent_class)->dispose (object);
+}
+
+static void
 usd_xrandr_manager_class_init (UsdXrandrManagerClass *klass)
 {
         GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+        object_class->get_property = usd_xrandr_manager_get_property;
+        object_class->set_property = usd_xrandr_manager_set_property;
+        object_class->constructor = usd_xrandr_manager_constructor;
+        object_class->dispose = usd_xrandr_manager_dispose;
         object_class->finalize = usd_xrandr_manager_finalize;
 
         dbus_g_object_type_install_info (USD_TYPE_XRANDR_MANAGER, &dbus_glib_usd_xrandr_manager_object_info);

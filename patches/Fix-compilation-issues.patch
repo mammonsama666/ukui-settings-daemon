@@ -1,0 +1,13 @@
+Index: ukui-settings-daemon-1.2.1/plugins/xrandr/usd-xrandr-manager.c
+===================================================================
+--- ukui-settings-daemon-1.2.1.orig/plugins/xrandr/usd-xrandr-manager.c	2020-08-06 16:01:38.279100127 +0800
++++ ukui-settings-daemon-1.2.1/plugins/xrandr/usd-xrandr-manager.c	2020-08-06 16:23:52.875520116 +0800
+@@ -1740,7 +1740,7 @@
+ }
+ 
+ /*检测到旋转，更改触摸屏鼠标光标位置*/
+-void set_touchscreen_cursor(void *date)
++void set_touchscreen_cursor(float matrix[])
+ {
+         int ts_device_id = 0;
+         Atom prop_float, prop_matrix;
